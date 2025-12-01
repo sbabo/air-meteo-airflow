@@ -1,0 +1,47 @@
+version: '3.9'
+
+x-airflow-common:
+  &airflow-common
+  build: .
+  environment:
+    - AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    - AIRFLOW__CORE__FERNET_KEY: temporary_fernet_key
+    - AIRFLOW--CORE__DAGS_ARE_PAUSED_AT_CREATION: False
+    - AIRFLOW__CORE__LOAD_EXAMPLES: False
+    - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////home/airflow/airflow/airflow.db
+  volumes:
+    - ./dags:/opt/airflow/dags
+  networks:
+    - air-meteo-networks
+
+services:
+  postgres-airflow:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    networks:
+      - air-meteo-networks
+
+  webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres-airflow
+    restart: always
+
+  scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    command: scheduler
+    depends_on:
+      - postgres-airflow
+    restart: always
+
+networks:
+  air-meteo-networks:
+    external: true
